@@ -548,7 +548,7 @@ client.on("interactionCreate", async interaction => {
           embeds: [ticketEmbed(data.tickets[channel.id])],
           components: [ticketButtons()]
         });
-        await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner <:ka7x_partner:1552216203592867850> **.`);
+        await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner. <:ka7x_partner:1552216203592867850> **`);
         });
         return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
       }
