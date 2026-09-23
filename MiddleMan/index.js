@@ -344,7 +344,7 @@ client.once("ready", async () => {
     console.error("Command registration failed:", error);
   }
   client.user.setPresence({
-    activities: [{ name: "Game Of Thrones All Day", type: 4 }],
+    activities: [{ name: "A Song of Ice And Fire <a:cyan_fire:1327696860684750870> ", type: 4 }],
     status: "online"
   });
 });
@@ -410,7 +410,7 @@ client.on("interactionCreate", async interaction => {
         const modal = new ModalBuilder().setCustomId("middleman_modal").setTitle("Request a Middleman");
         const fields = [
           ["trader_id", "Who Are You Trading With?", "1533877696189304875 / ka7xz"],
-          ["trade", "What Is the Trade?", "e.g. my items for there crypto"],
+          ["trade", "What Is the Trade?", "e.g. my items for their crypto"],
           ["fees", "What Is the Fees? (REQUIRED)", "e.g. 50M GARAMA or 0.50$"]
         ];
         for (const [id, label, placeholder] of fields) {
