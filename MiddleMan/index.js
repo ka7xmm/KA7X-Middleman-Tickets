@@ -102,9 +102,13 @@ function parseUserId(value) {
 }
 
 async function resolveGuildMember(guild, value) {
-  const raw = String(value).trim();
-  const id = parseUserId(raw);
+  let raw = String(value ?? "").trim();
+  if (!raw) return null;
 
+  // Modal input can contain a normal @username typed by the user.
+  if (raw.startsWith("@")) raw = raw.slice(1).trim();
+
+  const id = parseUserId(raw);
   if (id) {
     try {
       return await guild.members.fetch(id);
@@ -113,46 +117,51 @@ async function resolveGuildMember(guild, value) {
     }
   }
 
-  // Also accept a normal Discord username/display name.
-  // Matching is case-insensitive. This supports modern usernames,
-  // global display names, and the older name#1234 format.
   const normalized = raw.toLowerCase();
   const withoutTag = normalized.replace(/#\d{4}$/, "");
 
-  try {
-    const results = await guild.members.fetch({ query: raw, limit: 25 });
-    const exact = results.find(member => {
-      const username = member.user.username?.toLowerCase();
-      const globalName = member.user.globalName?.toLowerCase();
-      const displayName = member.displayName?.toLowerCase();
-
-      return (
-        username === normalized ||
-        username === withoutTag ||
-        globalName === normalized ||
-        displayName === normalized
-      );
-    });
-
-    if (exact) return exact;
-  } catch {
-    // Fall through to the local cache search.
-  }
-
-  const cached = guild.members.cache.find(member => {
-    const username = member.user.username?.toLowerCase();
-    const globalName = member.user.globalName?.toLowerCase();
-    const displayName = member.displayName?.toLowerCase();
+  const matchesMember = (member) => {
+    const username = member.user.username?.toLowerCase() ?? "";
+    const globalName = member.user.globalName?.toLowerCase() ?? "";
+    const displayName = member.displayName?.toLowerCase() ?? "";
+    const tag = member.user.discriminator && member.user.discriminator !== "0"
+      ? `${username}#${member.user.discriminator}`
+      : "";
 
     return (
       username === normalized ||
       username === withoutTag ||
       globalName === normalized ||
-      displayName === normalized
+      displayName === normalized ||
+      tag === normalized
     );
-  });
+  };
 
-  return cached ?? null;
+  // First check the cache. This works immediately when the member is cached.
+  const cached = guild.members.cache.find(matchesMember);
+  if (cached) return cached;
+
+  // Ask Discord's member search endpoint. This is useful when the member
+  // has not yet been cached by the bot.
+  try {
+    const results = await guild.members.fetch({ query: raw.replace(/^@/, ""), limit: 100 });
+    const exact = results.find(matchesMember);
+    if (exact) return exact;
+  } catch (error) {
+    console.error("Member search failed:", error?.message ?? error);
+  }
+
+  // Final fallback: fetch the guild member list and perform an exact match.
+  // This makes plain usernames/display names work reliably in normal-sized servers.
+  try {
+    const members = await guild.members.fetch();
+    const exact = members.find(matchesMember);
+    if (exact) return exact;
+  } catch (error) {
+    console.error("Guild member fetch failed:", error?.message ?? error);
+  }
+
+  return null;
 }
 
 function buttonEmoji(value, fallbackName) {
