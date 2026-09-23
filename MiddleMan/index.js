@@ -543,11 +543,12 @@ client.on("interactionCreate", async interaction => {
           createdAt: Date.now()
         };
         saveData();
-        await channel.send({
-          content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE_ID}>`,
-          embeds: [ticketEmbed(data.tickets[channel.id])],
-          components: [ticketButtons()]
+        const ticketMessage = await channel.send({
+        content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE_ID}>`,
+        embeds: [ticketEmbed(data.tickets[channel.id])],
+        components: [ticketButtons()]
         });
+
         await ticketMessage.pin();
         await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner. <:ka7x_partner:1552216203592867850> **`);
         });
