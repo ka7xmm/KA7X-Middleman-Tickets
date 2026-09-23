@@ -548,11 +548,12 @@ client.on("interactionCreate", async interaction => {
           embeds: [ticketEmbed(data.tickets[channel.id])],
           components: [ticketButtons()]
         });
+        await ticketMessage.pin();
         await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner. <:ka7x_partner:1552216203592867850> **`);
         });
         return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
       }
-
+       await ticketMessage.pin();
       if (interaction.customId === "crosstrade_modal") {
         if (!isMMStaff(interaction.member)) return interaction.reply({ content: "Only Middleman Staff can use this command.", ephemeral: true });
         const channel = interaction.channel;
