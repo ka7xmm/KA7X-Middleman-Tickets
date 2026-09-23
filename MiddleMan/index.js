@@ -101,8 +101,31 @@ function parseUserId(value) {
   return match?.[1] ?? match?.[2] ?? null;
 }
 
-function buttonEmoji(id, fallbackName) {
-  return id ? { id: String(id), name: fallbackName } : undefined;
+function buttonEmoji(value, fallbackName) {
+  if (!value) return undefined;
+
+  let emojiValue = String(value).trim();
+
+  // Accept either a raw emoji ID (123456789...) or a Discord
+  // custom emoji string such as <:SeniorMiddleMan:123456789...>
+  // / <a:SeniorMiddleMan:123456789...>.
+  emojiValue = emojiValue.replace(/^([\"\'])(.*)\1$/, "$2").trim();
+
+  const customEmoji = emojiValue.match(/^<(a?):([A-Za-z0-9_]+):(\d{17,20})>$/);
+  if (customEmoji) {
+    return {
+      id: customEmoji[3],
+      name: customEmoji[2],
+      animated: customEmoji[1] === "a"
+    };
+  }
+
+  if (/^\d{17,20}$/.test(emojiValue)) {
+    return { id: emojiValue, name: fallbackName };
+  }
+
+  // Do not pass an invalid string into Discord's emoji.id field.
+  return undefined;
 }
 
 function middlemanPanel() {
