@@ -101,6 +101,60 @@ function parseUserId(value) {
   return match?.[1] ?? match?.[2] ?? null;
 }
 
+async function resolveGuildMember(guild, value) {
+  const raw = String(value).trim();
+  const id = parseUserId(raw);
+
+  if (id) {
+    try {
+      return await guild.members.fetch(id);
+    } catch {
+      return null;
+    }
+  }
+
+  // Also accept a normal Discord username/display name.
+  // Matching is case-insensitive. This supports modern usernames,
+  // global display names, and the older name#1234 format.
+  const normalized = raw.toLowerCase();
+  const withoutTag = normalized.replace(/#\d{4}$/, "");
+
+  try {
+    const results = await guild.members.fetch({ query: raw, limit: 25 });
+    const exact = results.find(member => {
+      const username = member.user.username?.toLowerCase();
+      const globalName = member.user.globalName?.toLowerCase();
+      const displayName = member.displayName?.toLowerCase();
+
+      return (
+        username === normalized ||
+        username === withoutTag ||
+        globalName === normalized ||
+        displayName === normalized
+      );
+    });
+
+    if (exact) return exact;
+  } catch {
+    // Fall through to the local cache search.
+  }
+
+  const cached = guild.members.cache.find(member => {
+    const username = member.user.username?.toLowerCase();
+    const globalName = member.user.globalName?.toLowerCase();
+    const displayName = member.displayName?.toLowerCase();
+
+    return (
+      username === normalized ||
+      username === withoutTag ||
+      globalName === normalized ||
+      displayName === normalized
+    );
+  });
+
+  return cached ?? null;
+}
+
 function buttonEmoji(value, fallbackName) {
   if (!value) return undefined;
 
@@ -345,7 +399,7 @@ client.on("interactionCreate", async interaction => {
       if (interaction.customId === "create_middleman") {
         const modal = new ModalBuilder().setCustomId("middleman_modal").setTitle("Request a Middleman");
         const fields = [
-          ["trader_id", "Who Are You Trading With?", "Mention User Or User Id"],
+          ["trader_id", "Who Are You Trading With?", "Mention, Username Or User Id"],
           ["trade", "What Is the Trade?", "My Meowl For His 230$"],
           ["fees", "What Is the Fees? (REQUIRED)", "Dragon Cannelloni Or 10$"]
         ];
@@ -441,14 +495,20 @@ client.on("interactionCreate", async interaction => {
       if (interaction.customId === "middleman_modal") {
         await interaction.deferReply({ ephemeral: true });
         const traderValue = interaction.fields.getTextInputValue("trader_id").trim();
-        const traderId = parseUserId(traderValue);
         const trade = interaction.fields.getTextInputValue("trade").trim();
         const fees = interaction.fields.getTextInputValue("fees").trim();
-        if (!traderId) return interaction.editReply({ content: "The trading user must be a valid mention or user ID." });
-        if (traderId === interaction.user.id) return interaction.editReply({ content: "You cannot trade with yourself." });
-        let trader;
-        try { trader = await interaction.guild.members.fetch(traderId); } catch { trader = null; }
-        if (!trader) return interaction.editReply({ content: "That user is not in this server. They must join the server before you can create a middleman ticket." });
+
+        const trader = await resolveGuildMember(interaction.guild, traderValue);
+        if (!trader) {
+          return interaction.editReply({
+            content: "That user could not be found in this server. Use their @mention, username, or user ID."
+          });
+        }
+
+        const traderId = trader.id;
+        if (traderId === interaction.user.id) {
+          return interaction.editReply({ content: "You cannot trade with yourself." });
+        }
 
         const ticketNumber = data.nextTicket++;
         const ticketName = `mm-${String(ticketNumber).padStart(4, "0")}`;
@@ -488,18 +548,27 @@ client.on("interactionCreate", async interaction => {
         if (!isMMStaff(interaction.member)) return interaction.reply({ content: "Only Middleman Staff can use this command.", ephemeral: true });
         const channel = interaction.channel;
         const person1Value = interaction.fields.getTextInputValue("person1").trim();
-        const person1Id = parseUserId(person1Value);
         const person1Stuff = interaction.fields.getTextInputValue("person1stuff").trim();
         const person2Value = interaction.fields.getTextInputValue("person2").trim();
-        const person2Id = parseUserId(person2Value);
         const person2Stuff = interaction.fields.getTextInputValue("person2stuff").trim();
         const fees = interaction.fields.getTextInputValue("fees").trim();
-        if (!person1Id || !person2Id) return interaction.reply({ content: "Both people must be valid mentions or user IDs.", ephemeral: true });
-        if (person1Id === person2Id) return interaction.reply({ content: "Person 1 and Person 2 must be different users.", ephemeral: true });
-        let p1, p2;
-        try { p1 = await interaction.guild.members.fetch(person1Id); } catch { p1 = null; }
-        try { p2 = await interaction.guild.members.fetch(person2Id); } catch { p2 = null; }
-        if (!p1 || !p2) return interaction.reply({ content: "Both traders must be members of this server.", ephemeral: true });
+
+        const p1 = await resolveGuildMember(interaction.guild, person1Value);
+        const p2 = await resolveGuildMember(interaction.guild, person2Value);
+
+        if (!p1 || !p2) {
+          return interaction.reply({
+            content: "Both traders must be found in this server. Use their @mention, username, or user ID.",
+            ephemeral: true
+          });
+        }
+
+        const person1Id = p1.id;
+        const person2Id = p2.id;
+
+        if (person1Id === person2Id) {
+          return interaction.reply({ content: "Person 1 and Person 2 must be different users.", ephemeral: true });
+        }
 
         const ticket = data.tickets[channel.id];
         if (!ticket) return interaction.reply({ content: "Use /crosstrade inside a middleman ticket.", ephemeral: true });
