@@ -432,7 +432,7 @@ client.on("interactionCreate", async interaction => {
 
       if (interaction.customId === "claim_ticket") {
         if (!isMMStaff(interaction.member)) {
-          return interaction.reply({ content: "Only Middleman Staff can claim this ticket.", ephemeral: true });
+          return interaction.reply({ content: "Only **Middleman** Staff can claim this ticket.", ephemeral: true });
         }
         if (ticket.claimedBy) {
           return interaction.reply({ content: `This ticket is already claimed by <@${ticket.claimedBy}>.`, ephemeral: true });
@@ -444,7 +444,8 @@ client.on("interactionCreate", async interaction => {
       }
 
       if (interaction.customId === "close_ticket") {
-        if (!isMMStaff(interaction.member) && interaction.user.id !== ticket.requesterId && interaction.user.id !== ticket.traderId) {
+      if (!
+          isMMStaff(interaction.member)) { 
           return interaction.reply({ content: "You do not have permission to close this ticket.", ephemeral: true });
         }
         ticket.status = "closed";
