@@ -281,14 +281,15 @@ function crossTradeRulesEmbed() {
   return new EmbedBuilder()
     .setTitle("Cross Trading Guidelines")
     .setDescription(
-      "Please read carefully before you agree:\n\n" +
-      "1. We do not middleman accounts. Accounts can be recovered/rolled back, which may lead to scams.\n\n" +
-      "2. If either trader refunds, chargebacks, or disputes the payment, we are not responsible for any losses.\n\n" +
-      "3. Confirm the exact trade amount and items with the other trader before starting.\n\n" +
-      "4. We do not middleman fraudulent, stolen, or suspicious items.\n\n" +
-      "5. Once both traders confirm the deal is complete, the trade is considered final.\n\n" +
-      "6. Any attempt to scam, impersonate, or misuse the service will result in a blacklist and server punishment.\n\n" +
-      "7. By clicking Agree, you confirm that you understand and accept these guidelines."
+      "Please read carefully before you agree:\n" +
+"1. We do not middleman accounts. Accounts can be recovered/rolled back, which may lead to scams.\n" +
+"2. If either trader refunds, chargebacks, or disputes the payment, we are not responsible for any losses.\n" +
+"3. Confirm the exact trade amount and items with the other trader before starting.\n" +
+"4. We do not middleman fraudulent, stolen, or suspicious items.\n" +
+"5. Once both traders confirm the deal is complete, the trade is considered final.\n" +
+"6. Any attempt to scam, impersonate, or misuse the service will result in a blacklist and server punishment.\n" +
+"7. By clicking Agree, you confirm that you understand and accept these guidelines."
+      
     );
 }
 
@@ -484,7 +485,7 @@ client.on("interactionCreate", async interaction => {
           await interaction.channel.send({ embeds: [
             new EmbedBuilder()
               .setTitle("Cross Trade Rules Accepted")
-              .setDescription("Both traders have agreed to the rules. Moderation staff can now continue.")
+              .setDescription("Both traders have agreed to the rules. **MiddleMan staff** can now continue.")
               .setTimestamp()
           ] });
         }
@@ -516,7 +517,7 @@ client.on("interactionCreate", async interaction => {
 
         const traderId = trader.id;
         if (traderId === interaction.user.id) {
-          return interaction.editReply({ content: "You cannot trade with yourself." });
+          return interaction.editReply({ content: "You cannot trade with **yourself**." });
         }
 
         const ticketNumber = data.nextTicket++;
@@ -546,7 +547,7 @@ client.on("interactionCreate", async interaction => {
           embeds: [ticketEmbed(data.tickets[channel.id])],
           components: [ticketButtons()]
         });
-        await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner**.`);
+        await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner <:ka7x_partner:1552216203592867850> **.`);
         });
         return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
       }
