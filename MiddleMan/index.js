@@ -344,7 +344,7 @@ client.once("ready", async () => {
     console.error("Command registration failed:", error);
   }
   client.user.setPresence({
-    activities: [{ name: "Middleman Tickets", type: 3 }],
+    activities: [{ name: "Game Of Thrones All Day", type: 4 }],
     status: "online"
   });
 });
