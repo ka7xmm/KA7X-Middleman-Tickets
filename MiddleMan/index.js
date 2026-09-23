@@ -546,9 +546,7 @@ client.on("interactionCreate", async interaction => {
           embeds: [ticketEmbed(data.tickets[channel.id])],
           components: [ticketButtons()]
         });
-        await channel.send({
-          embeds: [new EmbedBuilder().setDescription(`<@${traderId}> was added to the ticket.`)],
-          allowedMentions: { users: [traderId] }
+        await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner**.`);
         });
         return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
       }
