@@ -344,7 +344,7 @@ client.once("ready", async () => {
     console.error("Command registration failed:", error);
   }
   client.user.setPresence({
-    activities: [{ name: "A Song of Ice And Fire <a:cyan_fire:1327696860684750870> ", type: 4 }],
+    activities: [{ name: "A Song of Ice And Fire  ", type: 4 }],
     status: "online"
   });
 });
