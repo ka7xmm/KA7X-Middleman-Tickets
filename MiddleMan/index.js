@@ -28,7 +28,9 @@ const {
   TICKET_CATEGORY_ID,
   LOG_CHANNEL_ID,
   SENIOR_MIDDLEMAN_EMOJI_ID,
-  BLACK_VERIFY_EMOJI_ID
+  BLACK_VERIFY_EMOJI_ID,
+  CLAIM_EMOJI_ID,
+  CLOSE_EMOJI_ID
 } = process.env;
 
 if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
@@ -100,7 +102,7 @@ function parseUserId(value) {
 }
 
 function buttonEmoji(id, fallbackName) {
-  return id ? { id } : undefined;
+  return id ? { id: String(id), name: fallbackName } : undefined;
 }
 
 function middlemanPanel() {
@@ -174,16 +176,19 @@ function ticketEmbed(ticket) {
 }
 
 function ticketButtons() {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("claim_ticket")
-      .setLabel("Claim Ticket")
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("close_ticket")
-      .setLabel("Close Ticket")
-      .setStyle(ButtonStyle.Secondary)
-  );
+  const claim = new ButtonBuilder()
+    .setCustomId("claim_ticket")
+    .setLabel("Claim Ticket")
+    .setStyle(ButtonStyle.Secondary);
+  const close = new ButtonBuilder()
+    .setCustomId("close_ticket")
+    .setLabel("Close Ticket")
+    .setStyle(ButtonStyle.Secondary);
+
+  if (CLAIM_EMOJI_ID) claim.setEmoji(buttonEmoji(CLAIM_EMOJI_ID, "Claim"));
+  if (CLOSE_EMOJI_ID) close.setEmoji(buttonEmoji(CLOSE_EMOJI_ID, "Close"));
+
+  return new ActionRowBuilder().addComponents(claim, close);
 }
 
 function crossTradeRulesEmbed() {
