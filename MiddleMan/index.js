@@ -130,7 +130,7 @@ function buttonEmoji(value, fallbackName) {
 
 function middlemanPanel() {
   const embed = new EmbedBuilder()
-    .setTitle("Middleman Request")
+    .setTitle("__**MIDDLEMAN SERVICES**__")
     .setDescription(
       "**Request a Middleman**\n\n" +
       "Welcome to our middleman Service centre.\n\n" +
