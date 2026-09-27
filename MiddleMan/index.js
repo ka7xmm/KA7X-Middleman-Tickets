@@ -316,11 +316,11 @@ function crossTradeModal() {
     .setTitle("Cross Trade");
 
   const fields = [
-    ["person1", "Person 1", "Mention user or enter user ID"],
-    ["person1stuff", "Person 1 Stuff", "What stuff is Person 1 trading?"],
-    ["person2", "Person 2", "Mention user or enter user ID"],
-    ["person2stuff", "Person 2 Stuff", "What stuff is Person 2 trading?"],
-    ["fees", "Fees", "Person 1 fee and Person 2 fee"]
+    ["person1", "From", "Mention the user or enter their user ID"],
+    ["person1stuff", "From Stuff", "What is being traded from this user?"],
+    ["person2", "To", "Mention the user or enter their user ID"],
+    ["person2stuff", "To Stuff", "What is being traded to this user?"],
+    ["tradeType", "Trade Type", "Example: Cross Trade, Crypto Trade, Item Trade"],
   ];
 
   for (const [id, label, placeholder] of fields) {
@@ -466,8 +466,7 @@ client.on("interactionCreate", async interaction => {
                 { name: "Other Trader", value: `<@${ticket.traderId}>`, inline: true },
                 { name: "Closed By", value: `<@${interaction.user.id}>`, inline: true },
                 { name: "Middleman", value: ticket.claimedBy ? `<@${ticket.claimedBy}>` : "Not claimed", inline: true },
-                { name: "Trade", value: ticket.trade, inline: false },
-                { name: "Fees", value: ticket.fees, inline: false }
+                { name: "Trade", value: ticket.trade, inline: false }
               )
               .setTimestamp()
           ] });
@@ -485,8 +484,7 @@ client.on("interactionCreate", async interaction => {
                 { name: "Other Trader", value: `<@${ticket.traderId}>`, inline: true },
                 { name: "Middleman", value: ticket.claimedBy ? `<@${ticket.claimedBy}>` : "Not claimed", inline: true },
                 { name: "Completed By", value: `<@${interaction.user.id}>`, inline: true },
-                { name: "Trade Details", value: ticket.trade, inline: false },
-                { name: "Fees", value: ticket.fees, inline: false }
+                { name: "Trade Details", value: ticket.trade, inline: false }
               )
               .setTimestamp()
           ] });
@@ -535,7 +533,6 @@ client.on("interactionCreate", async interaction => {
         await interaction.deferReply({ ephemeral: true });
         const traderValue = interaction.fields.getTextInputValue("trader_id").trim();
         const trade = interaction.fields.getTextInputValue("trade").trim();
-        const fees = interaction.fields.getTextInputValue("fees").trim();
 
         const trader = await resolveGuildMember(interaction.guild, traderValue);
         if (!trader) {
@@ -565,7 +562,6 @@ client.on("interactionCreate", async interaction => {
           requesterId: interaction.user.id,
           traderId,
           trade,
-          fees,
           claimedBy: null,
           status: "open",
           createdAt: Date.now()
@@ -590,8 +586,7 @@ client.on("interactionCreate", async interaction => {
                 { name: "Ticket", value: `#${String(ticketNumber).padStart(4, "0")} · <#${channel.id}>`, inline: false },
                 { name: "Requester", value: `<@${interaction.user.id}>`, inline: true },
                 { name: "Other Trader", value: `<@${traderId}>`, inline: true },
-                { name: "Trade", value: trade, inline: false },
-                { name: "Fees", value: fees, inline: false }
+                { name: "Trade", value: trade, inline: false }
               )
               .setTimestamp()
           ] });
@@ -606,7 +601,7 @@ client.on("interactionCreate", async interaction => {
         const person1Stuff = interaction.fields.getTextInputValue("person1stuff").trim();
         const person2Value = interaction.fields.getTextInputValue("person2").trim();
         const person2Stuff = interaction.fields.getTextInputValue("person2stuff").trim();
-        const fees = interaction.fields.getTextInputValue("fees").trim();
+        const tradeType = interaction.fields.getTextInputValue("tradeType").trim();
 
         const p1 = await resolveGuildMember(interaction.guild, person1Value);
         const p2 = await resolveGuildMember(interaction.guild, person2Value);
@@ -632,7 +627,6 @@ client.on("interactionCreate", async interaction => {
           person1Stuff,
           person2Id,
           person2Stuff,
-          fees,
           createdBy: interaction.user.id,
           agreed: [],
           createdAt: Date.now()
@@ -640,18 +634,17 @@ client.on("interactionCreate", async interaction => {
         saveData();
 
         await channel.send({ embeds: [crossTradeRulesEmbed()], components: [crossTradeAgreeRow()] });
-        const logChannel = interaction.guild.channels.cache.get(TICKET_LOG_CHANNEL_ID);
-        if (logChannel?.isTextBased()) {
-          await logChannel.send({ embeds: [
+        // Cross-trade details belong in the Completed Trades channel, not Ticket Logs.
+        const completedTradesChannel = interaction.guild.channels.cache.get(COMPLETED_TRADES_LOG_CHANNEL_ID);
+        if (completedTradesChannel?.isTextBased()) {
+          await completedTradesChannel.send({ embeds: [
             new EmbedBuilder()
-              .setTitle("Cross Trade")
+              .setTitle("Trade Details")
               .addFields(
-                { name: "Person 1", value: `<@${person1Id}>`, inline: true },
-                { name: "Person 1 Stuff", value: person1Stuff, inline: false },
-                { name: "Person 2", value: `<@${person2Id}>`, inline: true },
-                { name: "Person 2 Stuff", value: person2Stuff, inline: false },
-                { name: "Fees", value: fees, inline: false },
-                { name: "Middleman", value: `<@${interaction.user.id}>`, inline: true }
+                { name: "From", value: `<@${person1Id}>\n${person1Stuff}`, inline: false },
+                { name: "To", value: `<@${person2Id}>\n${person2Stuff}`, inline: false },
+                { name: "Trade Type", value: tradeType, inline: true },
+                { name: "Exchanger", value: `<@${interaction.user.id}>`, inline: true }
               )
               .setTimestamp()
           ] });
