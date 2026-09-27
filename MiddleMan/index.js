@@ -546,6 +546,13 @@ client.on("interactionCreate", async interaction => {
           return interaction.editReply({ content: "You cannot trade with **yourself**." });
         }
 
+        if (!TICKET_CATEGORY_ID) {
+          return interaction.editReply({ content: "Ticket creation is not configured: TICKET_CATEGORY_ID is missing." });
+        }
+        if (!MIDDLEMAN_ROLE_ID) {
+          return interaction.editReply({ content: "Ticket creation is not configured: MIDDLEMAN_ROLE_ID is missing." });
+        }
+
         const ticketNumber = data.nextTicket++;
         const ticketName = `mm-${String(ticketNumber).padStart(4, "0")}`;
         const overwrites = [
@@ -555,7 +562,22 @@ client.on("interactionCreate", async interaction => {
           { id: MIDDLEMAN_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
           { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels] }
         ];
-        const channel = await interaction.guild.channels.create({ name: ticketName, type: ChannelType.GuildText, parent: TICKET_CATEGORY_ID, permissionOverwrites: overwrites });
+
+        let channel;
+        try {
+          channel = await interaction.guild.channels.create({
+            name: ticketName,
+            type: ChannelType.GuildText,
+            parent: TICKET_CATEGORY_ID,
+            permissionOverwrites: overwrites
+          });
+        } catch (error) {
+          console.error("Ticket channel creation failed:", error);
+          return interaction.editReply({
+            content: "I could not create the ticket channel. Please make sure the bot has **Manage Channels** and **Manage Roles** permissions and that the ticket category ID is correct."
+          });
+        }
+
         data.tickets[channel.id] = {
           channelId: channel.id,
           ticketNumber,
@@ -567,29 +589,48 @@ client.on("interactionCreate", async interaction => {
           createdAt: Date.now()
         };
         saveData();
-        const ticketMessage = await channel.send({
-          content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE_ID}>`,
-          embeds: [ticketEmbed(data.tickets[channel.id])],
-          components: [ticketButtons()]
-        });
 
-        await ticketMessage.pin();
-        await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner. <:ka7x_partner:1552216203592867850> **`);
+        try {
+          const ticketMessage = await channel.send({
+            content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE_ID}>`,
+            embeds: [ticketEmbed(data.tickets[channel.id])],
+            components: [ticketButtons()]
+          });
 
-        // Log every newly opened ticket in the ticket logs channel.
+          // Pinning is optional; a missing Manage Messages permission should not
+          // make an otherwise successful ticket request fail.
+          await ticketMessage.pin().catch(error => {
+            console.warn("Could not pin ticket message:", error?.message ?? error);
+          });
+
+          await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner. <:ka7x_partner:1552216203592867850> **`);
+        } catch (error) {
+          console.error("Ticket message setup failed:", error);
+          await channel.delete().catch(() => {});
+          delete data.tickets[channel.id];
+          saveData();
+          return interaction.editReply({ content: "The ticket channel was created, but I could not finish setting it up. Check the bot's channel permissions." });
+        }
+
+        // Log every newly opened ticket in the ticket logs channel. Logging
+        // must never make the ticket request fail.
         const ticketLogChannel = interaction.guild.channels.cache.get(TICKET_LOG_CHANNEL_ID);
         if (ticketLogChannel?.isTextBased()) {
-          await ticketLogChannel.send({ embeds: [
-            new EmbedBuilder()
-              .setTitle("Middleman Ticket Opened")
-              .addFields(
-                { name: "Ticket", value: `#${String(ticketNumber).padStart(4, "0")} · <#${channel.id}>`, inline: false },
-                { name: "Requester", value: `<@${interaction.user.id}>`, inline: true },
-                { name: "Other Trader", value: `<@${traderId}>`, inline: true },
-                { name: "Trade", value: trade, inline: false }
-              )
-              .setTimestamp()
-          ] });
+          try {
+            await ticketLogChannel.send({ embeds: [
+              new EmbedBuilder()
+                .setTitle("Middleman Ticket Opened")
+                .addFields(
+                  { name: "Ticket", value: `#${String(ticketNumber).padStart(4, "0")} · <#${channel.id}>`, inline: false },
+                  { name: "Requester", value: `<@${interaction.user.id}>`, inline: true },
+                  { name: "Other Trader", value: `<@${traderId}>`, inline: true },
+                  { name: "Trade", value: trade, inline: false }
+                )
+                .setTimestamp()
+            ] });
+          } catch (error) {
+            console.error("Ticket log send failed:", error);
+          }
         }
 
         return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
@@ -658,10 +699,13 @@ client.on("interactionCreate", async interaction => {
     }
   } catch (error) {
     console.error("Interaction error:", error);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: "Something went wrong while processing that action.", ephemeral: true }).catch(() => {});
+    const message = "Something went wrong while processing that action. Please check the bot console for the exact error.";
+    if (interaction.deferred) {
+      await interaction.editReply({ content: message }).catch(() => {});
+    } else if (!interaction.replied) {
+      await interaction.reply({ content: message, ephemeral: true }).catch(() => {});
     } else {
-      await interaction.followUp({ content: "Something went wrong while processing that action.", ephemeral: true }).catch(() => {});
+      await interaction.followUp({ content: message, ephemeral: true }).catch(() => {});
     }
   }
 });
