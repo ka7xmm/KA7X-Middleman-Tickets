@@ -27,6 +27,7 @@ const {
   MIDDLEMAN_ROLE_ID,
   TICKET_CATEGORY_ID,
   LOG_CHANNEL_ID,
+  COMPLETED_TRADES_CHANNEL_ID,
   SENIOR_MIDDLEMAN_EMOJI_ID,
   BLACK_VERIFY_EMOJI_ID,
   CLAIM_EMOJI_ID,
@@ -450,15 +451,41 @@ client.on("interactionCreate", async interaction => {
         }
         ticket.status = "closed";
         saveData();
+        // Log the ticket closing in the ticket logs channel.
         const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
         if (logChannel?.isTextBased()) {
           await logChannel.send({ embeds: [
             new EmbedBuilder()
               .setTitle("Middleman Ticket Closed")
               .addFields(
+                { name: "Ticket", value: `#${String(ticket.ticketNumber).padStart(4, "0")}`, inline: true },
                 { name: "Requester", value: `<@${ticket.requesterId}>`, inline: true },
                 { name: "Other Trader", value: `<@${ticket.traderId}>`, inline: true },
-                { name: "Closed By", value: `<@${interaction.user.id}>`, inline: true }
+                { name: "Closed By", value: `<@${interaction.user.id}>`, inline: true },
+                { name: "Middleman", value: ticket.claimedBy ? `<@${ticket.claimedBy}>` : "Not claimed", inline: true },
+                { name: "Trade", value: ticket.trade, inline: false },
+                { name: "Fees", value: ticket.fees, inline: false }
+              )
+              .setTimestamp()
+          ] });
+        }
+
+        // Save the full completed-trade record separately.
+        const completedTradesChannel = COMPLETED_TRADES_CHANNEL_ID
+          ? interaction.guild.channels.cache.get(COMPLETED_TRADES_CHANNEL_ID)
+          : interaction.guild.channels.cache.find(ch => ch.isTextBased() && ch.name === "completed-trades");
+        if (completedTradesChannel?.isTextBased()) {
+          await completedTradesChannel.send({ embeds: [
+            new EmbedBuilder()
+              .setTitle("Completed Middleman Trade")
+              .addFields(
+                { name: "Ticket", value: `#${String(ticket.ticketNumber).padStart(4, "0")}`, inline: true },
+                { name: "Requester", value: `<@${ticket.requesterId}>`, inline: true },
+                { name: "Other Trader", value: `<@${ticket.traderId}>`, inline: true },
+                { name: "Middleman", value: ticket.claimedBy ? `<@${ticket.claimedBy}>` : "Not claimed", inline: true },
+                { name: "Completed By", value: `<@${interaction.user.id}>`, inline: true },
+                { name: "Trade Details", value: ticket.trade, inline: false },
+                { name: "Fees", value: ticket.fees, inline: false }
               )
               .setTimestamp()
           ] });
@@ -544,13 +571,31 @@ client.on("interactionCreate", async interaction => {
         };
         saveData();
         const ticketMessage = await channel.send({
-        content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE_ID}>`,
-        embeds: [ticketEmbed(data.tickets[channel.id])],
-        components: [ticketButtons()]
+          content: `<@${interaction.user.id}> <@&${MIDDLEMAN_ROLE_ID}>`,
+          embeds: [ticketEmbed(data.tickets[channel.id])],
+          components: [ticketButtons()]
         });
 
         await ticketMessage.pin();
         await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner. <:ka7x_partner:1552216203592867850> **`);
+
+        // Log every newly opened ticket in the ticket logs channel.
+        const ticketLogChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
+        if (ticketLogChannel?.isTextBased()) {
+          await ticketLogChannel.send({ embeds: [
+            new EmbedBuilder()
+              .setTitle("Middleman Ticket Opened")
+              .addFields(
+                { name: "Ticket", value: `#${String(ticketNumber).padStart(4, "0")} · <#${channel.id}>`, inline: false },
+                { name: "Requester", value: `<@${interaction.user.id}>`, inline: true },
+                { name: "Other Trader", value: `<@${traderId}>`, inline: true },
+                { name: "Trade", value: trade, inline: false },
+                { name: "Fees", value: fees, inline: false }
+              )
+              .setTimestamp()
+          ] });
+        }
+
         return interaction.editReply({ content: `Ticket created: <#${channel.id}>` });
       }
       if (interaction.customId === "crosstrade_modal") {
