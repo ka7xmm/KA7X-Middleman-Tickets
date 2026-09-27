@@ -596,6 +596,11 @@ client.on("interactionCreate", async interaction => {
       }
       if (interaction.customId === "crosstrade_modal") {
         if (!isMMStaff(interaction.member)) return interaction.reply({ content: "Only Middleman Staff can use this command.", ephemeral: true });
+
+        // A modal submission must be acknowledged within Discord's response window.
+        // Member lookup can take longer than that, so defer immediately.
+        await interaction.deferReply({ ephemeral: true });
+
         const channel = interaction.channel;
         const person1Value = interaction.fields.getTextInputValue("person1").trim();
         const person1Stuff = interaction.fields.getTextInputValue("person1stuff").trim();
@@ -607,9 +612,8 @@ client.on("interactionCreate", async interaction => {
         const p2 = await resolveGuildMember(interaction.guild, person2Value);
 
         if (!p1 || !p2) {
-          return interaction.reply({
-            content: "Both traders must be found in this server. Use their @mention, username, or user ID.",
-            ephemeral: true
+          return interaction.editReply({
+            content: "Both traders must be found in this server. Use their @mention, username, or user ID."
           });
         }
 
@@ -617,11 +621,11 @@ client.on("interactionCreate", async interaction => {
         const person2Id = p2.id;
 
         if (person1Id === person2Id) {
-          return interaction.reply({ content: "Person 1 and Person 2 must be different users.", ephemeral: true });
+          return interaction.editReply({ content: "Both traders must be different users." });
         }
 
         const ticket = data.tickets[channel.id];
-        if (!ticket) return interaction.reply({ content: "Use /crosstrade inside a middleman ticket.", ephemeral: true });
+        if (!ticket) return interaction.editReply({ content: "Use /crosstrade inside a middleman ticket." });
         ticket.crossTrade = {
           person1Id,
           person1Stuff,
@@ -649,7 +653,7 @@ client.on("interactionCreate", async interaction => {
               .setTimestamp()
           ] });
         }
-        return interaction.reply({ content: "Cross Trade rules have been sent and the submitted details were logged.", ephemeral: true });
+        return interaction.editReply({ content: "Cross Trade rules have been sent and the submitted details were logged." });
       }
     }
   } catch (error) {
