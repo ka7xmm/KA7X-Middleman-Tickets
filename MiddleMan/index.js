@@ -258,8 +258,7 @@ function ticketEmbed(ticket) {
     .addFields(
       { name: "Requester", value: `<@${ticket.requesterId}>`, inline: true },
       { name: "Trading With", value: `<@${ticket.traderId}>`, inline: true },
-      { name: "Trade", value: ticket.trade, inline: false },
-      { name: "Fees", value: ticket.fees, inline: false },
+      { name: "Trade", value: ticket.trade || "Not specified", inline: false },
       { name: "Middleman", value: middleman, inline: false }
     )
     .setTimestamp();
