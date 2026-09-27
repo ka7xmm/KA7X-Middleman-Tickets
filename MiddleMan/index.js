@@ -20,6 +20,9 @@ import fs from "fs";
 
 dotenv.config();
 
+const TICKET_LOG_CHANNEL_ID = "1551056368008429638";
+const COMPLETED_TRADES_LOG_CHANNEL_ID = "1552146520961318962";
+
 const {
   TOKEN,
   CLIENT_ID,
@@ -452,7 +455,7 @@ client.on("interactionCreate", async interaction => {
         ticket.status = "closed";
         saveData();
         // Log the ticket closing in the ticket logs channel.
-        const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
+        const logChannel = interaction.guild.channels.cache.get(TICKET_LOG_CHANNEL_ID);
         if (logChannel?.isTextBased()) {
           await logChannel.send({ embeds: [
             new EmbedBuilder()
@@ -471,9 +474,7 @@ client.on("interactionCreate", async interaction => {
         }
 
         // Save the full completed-trade record separately.
-        const completedTradesChannel = COMPLETED_TRADES_CHANNEL_ID
-          ? interaction.guild.channels.cache.get(COMPLETED_TRADES_CHANNEL_ID)
-          : interaction.guild.channels.cache.find(ch => ch.isTextBased() && ch.name === "completed-trades");
+        const completedTradesChannel = interaction.guild.channels.cache.get(COMPLETED_TRADES_LOG_CHANNEL_ID);
         if (completedTradesChannel?.isTextBased()) {
           await completedTradesChannel.send({ embeds: [
             new EmbedBuilder()
@@ -580,7 +581,7 @@ client.on("interactionCreate", async interaction => {
         await channel.send(`<@${traderId}> has been added to this ticket as the **trading partner. <:ka7x_partner:1552216203592867850> **`);
 
         // Log every newly opened ticket in the ticket logs channel.
-        const ticketLogChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
+        const ticketLogChannel = interaction.guild.channels.cache.get(TICKET_LOG_CHANNEL_ID);
         if (ticketLogChannel?.isTextBased()) {
           await ticketLogChannel.send({ embeds: [
             new EmbedBuilder()
@@ -639,7 +640,7 @@ client.on("interactionCreate", async interaction => {
         saveData();
 
         await channel.send({ embeds: [crossTradeRulesEmbed()], components: [crossTradeAgreeRow()] });
-        const logChannel = interaction.guild.channels.cache.get(LOG_CHANNEL_ID);
+        const logChannel = interaction.guild.channels.cache.get(TICKET_LOG_CHANNEL_ID);
         if (logChannel?.isTextBased()) {
           await logChannel.send({ embeds: [
             new EmbedBuilder()
@@ -650,7 +651,7 @@ client.on("interactionCreate", async interaction => {
                 { name: "Person 2", value: `<@${person2Id}>`, inline: true },
                 { name: "Person 2 Stuff", value: person2Stuff, inline: false },
                 { name: "Fees", value: fees, inline: false },
-                { name: "Submitted By", value: `<@${interaction.user.id}>`, inline: true }
+                { name: "Middleman", value: `<@${interaction.user.id}>`, inline: true }
               )
               .setTimestamp()
           ] });
